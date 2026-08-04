@@ -350,6 +350,12 @@ function AddCardModal({ onClose, onAdded }) {
             {searchError && <p className="error-msg">{searchError}</p>}
             {loadingCard && <p className="loading-msg">Carregando carta...</p>}
 
+            {searched && !searchLoading && !searchError && (
+              <p className="results-count">
+                {results.length} {results.length === 1 ? "carta encontrada" : "cartas encontradas"}
+              </p>
+            )}
+
             <div className="search-results">
               {results.map((r) => (
                 <button
@@ -366,7 +372,10 @@ function AddCardModal({ onClose, onAdded }) {
                       {r.name?.[0]?.toUpperCase() || "?"}
                     </div>
                   )}
-                  <span>{r.name}</span>
+                  <span className="result-name">{r.name}</span>
+                  <span className="result-meta">
+                    {r.setName} · {r.number}
+                  </span>
                 </button>
               ))}
             </div>

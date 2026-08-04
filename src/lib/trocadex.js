@@ -54,13 +54,44 @@ export async function setHidden(hidden) {
 
 // ---------- CATÁLOGO (TCGdex) ----------
 const TCGDEX = "https://api.tcgdex.net/v2/en/cards";
+const TCGDEX_SETS = "https://api.tcgdex.net/v2/en/sets";
 const imgUrl = (base) => (base ? base + "/high.webp" : null);
+
+// Cache em memória do índice de sets (id -> { name, cardCount }), buscado uma única vez.
+let setsIndexPromise = null;
+function getSetsIndex() {
+  if (!setsIndexPromise) {
+    setsIndexPromise = fetch(TCGDEX_SETS)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((sets) => new Map((Array.isArray(sets) ? sets : []).map((s) => [s.id, s])))
+      .catch(() => new Map());
+  }
+  return setsIndexPromise;
+}
+
+// O id de uma carta no TCGdex é sempre `${setId}-${localId}`.
+function setIdFromCardId(cardId, localId) {
+  const suffix = `-${localId}`;
+  return cardId && localId && cardId.endsWith(suffix) ? cardId.slice(0, -suffix.length) : null;
+}
+
 export async function searchCatalog(term) {
   const res = await fetch(`${TCGDEX}?name=${encodeURIComponent(term)}`);
   if (!res.ok) throw new Error("Falha ao buscar no TCGdex.");
   const data = await res.json();
-  return (Array.isArray(data) ? data : []).filter((c) => c.image).slice(0, 24)
-    .map((c) => ({ id: c.id, name: c.name, image: imgUrl(c.image) }));
+  const cards = (Array.isArray(data) ? data : []).filter((c) => c.image).slice(0, 60);
+  const setsIndex = await getSetsIndex();
+  return cards.map((c) => {
+    const setId = setIdFromCardId(c.id, c.localId);
+    const set = setId ? setsIndex.get(setId) : null;
+    return {
+      id: c.id,
+      name: c.name,
+      image: imgUrl(c.image),
+      setName: set?.name || setId || "—",
+      number: `${c.localId || "?"}/${set?.cardCount?.official || "?"}`,
+    };
+  });
 }
 export async function getCatalogCard(id) {
   const res = await fetch(`${TCGDEX}/${id}`);
