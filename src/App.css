@@ -354,6 +354,72 @@ button {
   padding: 6px 10px;
 }
 
+/* ---------- Explorar ---------- */
+.explore-section h2 {
+  margin-bottom: 16px;
+}
+
+.explore-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.explore-filters input {
+  flex: 1;
+  min-width: 160px;
+  font: inherit;
+  font-size: 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  box-sizing: border-box;
+}
+
+.explore-filters input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.explore-filters select {
+  font: inherit;
+  font-size: 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.explore-filters button {
+  cursor: pointer;
+  border-radius: 999px;
+  border: none;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  white-space: nowrap;
+}
+
+.explore-filters button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.card-owner {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: 2px;
+}
+
 /* ---------- Modal (adicionar carta) ---------- */
 .modal-overlay {
   position: fixed;

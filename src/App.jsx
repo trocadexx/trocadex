@@ -10,6 +10,7 @@ import {
   searchCatalog,
   getCatalogCard,
   addUserCard,
+  getExplore,
 } from "./lib/trocadex";
 import "./App.css";
 
@@ -493,6 +494,118 @@ function CatalogSection() {
   );
 }
 
+function ExploreCard({ card }) {
+  return (
+    <div className="card-tile">
+      <div className="card-image-wrap">
+        {card.official_image_url ? (
+          <img src={card.official_image_url} alt={card.name} className="card-image" />
+        ) : (
+          <div className="card-placeholder" style={{ background: placeholderColor(card.name) }}>
+            {card.name?.[0]?.toUpperCase() || "?"}
+          </div>
+        )}
+      </div>
+      <div className="card-info">
+        <p className="card-name">{card.name}</p>
+        <p className="card-meta">
+          {card.set_name} · {card.number}
+        </p>
+        <p className="card-meta">{card.rarity}</p>
+        <p className="card-owner">
+          @{card.owner_handle} · {card.city_approx}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ExploreSection() {
+  const [q, setQ] = useState("");
+  const [rarity, setRarity] = useState("");
+  const [cards, setCards] = useState([]);
+  const [rarityOptions, setRarityOptions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function loadExplore(filters, captureRarities = false) {
+    setError("");
+    setLoading(true);
+    try {
+      const data = await getExplore(filters);
+      setCards(data);
+      if (captureRarities) {
+        const distinct = Array.from(new Set(data.map((c) => c.rarity).filter(Boolean))).sort();
+        setRarityOptions(distinct);
+      }
+    } catch (err) {
+      setError(err.message || "Não foi possível carregar as cartas à troca.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadExplore({}, true);
+  }, []);
+
+  function handleSearchSubmit(e) {
+    e.preventDefault();
+    loadExplore({ q: q.trim(), rarity });
+  }
+
+  function handleRarityChange(e) {
+    const value = e.target.value;
+    setRarity(value);
+    loadExplore({ q: q.trim(), rarity: value });
+  }
+
+  return (
+    <div className="explore-section">
+      <h2>Explorar</h2>
+
+      <form className="explore-filters" onSubmit={handleSearchSubmit}>
+        <input
+          type="text"
+          placeholder="Buscar por nome ou número..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <select value={rarity} onChange={handleRarityChange}>
+          <option value="">Todas as raridades</option>
+          {rarityOptions.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+        <button type="submit" disabled={loading}>
+          {loading ? "Buscando..." : "Buscar"}
+        </button>
+      </form>
+
+      {loading && <p className="loading-msg">Carregando...</p>}
+      {error && <p className="error-msg">{error}</p>}
+
+      {!loading && !error && (
+        <p className="results-count">
+          {cards.length} {cards.length === 1 ? "carta disponível" : "cartas disponíveis"}
+        </p>
+      )}
+
+      {!loading && !error && cards.length === 0 && (
+        <p className="empty-msg">Nenhuma carta à troca ainda. Marque cartas suas para troca no Catálogo!</p>
+      )}
+
+      <div className="catalog-grid">
+        {cards.map((card) => (
+          <ExploreCard key={card.id} card={card} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function MainScreen({ onLoggedOut }) {
   const [section, setSection] = useState("catalogo");
 
@@ -545,12 +658,7 @@ function MainScreen({ onLoggedOut }) {
 
       <div className="content-area">
         {section === "catalogo" && <CatalogSection />}
-        {section === "explorar" && (
-          <div>
-            <h2>Explorar</h2>
-            <p>em breve</p>
-          </div>
-        )}
+        {section === "explorar" && <ExploreSection />}
         {section === "avaliar" && <p>🔧 Avaliação de cartas em construção. Em breve!</p>}
         {section === "perfil" && (
           <div>
