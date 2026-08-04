@@ -1,0 +1,233 @@
+/* ---------- Layout geral ---------- */
+.auth-screen,
+.main-screen {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.main-screen {
+  max-width: 640px;
+}
+
+/* ---------- Abas (Entrar / Criar conta) ---------- */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs button {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 8px 8px 0 0;
+  padding: 10px 12px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+
+.tabs button:hover {
+  background: var(--accent-bg);
+  color: var(--text-h);
+}
+
+.tabs button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ---------- Formulários ---------- */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.auth-form input {
+  font: inherit;
+  font-size: 15px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.auth-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.auth-form button[type="submit"] {
+  margin-top: 6px;
+}
+
+/* ---------- Botões (geral) ---------- */
+button {
+  font: inherit;
+}
+
+.auth-form button,
+.app-header button,
+.nav-buttons button {
+  cursor: pointer;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 11px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  transition: opacity 0.2s, transform 0.1s, background 0.2s;
+}
+
+.auth-form button:hover,
+.app-header button:hover {
+  opacity: 0.9;
+}
+
+.auth-form button:active,
+.app-header button:active {
+  transform: scale(0.98);
+}
+
+.auth-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---------- Seção Responsável (destaque) ---------- */
+.guardian-box {
+  border: 2px solid var(--accent);
+  background: var(--accent-bg);
+  border-radius: 14px;
+  padding: 16px;
+  margin: 4px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.guardian-box legend {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--accent);
+  padding: 0 6px;
+}
+
+.guardian-box .checkbox-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+.guardian-box .checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+/* ---------- Mensagens de erro ---------- */
+.error-msg {
+  background: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  color: #dc2626;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+/* ---------- Cabeçalho principal ---------- */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.app-header h1 {
+  margin: 16px 0;
+}
+
+.greeting {
+  font-size: 17px;
+  color: var(--text-h);
+  margin-bottom: 20px;
+}
+
+/* ---------- Navegação por seções ---------- */
+.nav-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.nav-buttons button {
+  background: var(--code-bg);
+  color: var(--text-h);
+}
+
+.nav-buttons button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ---------- Área de conteúdo ---------- */
+.content-area {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  min-height: 140px;
+  background: var(--bg);
+}
+
+.content-area p {
+  color: var(--text);
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 600px) {
+  .auth-screen,
+  .main-screen {
+    padding: 16px 14px 32px;
+  }
+
+  .nav-buttons {
+    gap: 8px;
+  }
+
+  .nav-buttons button {
+    flex: 1 1 calc(50% - 8px);
+    text-align: center;
+  }
+
+  .app-header {
+    justify-content: center;
+    text-align: center;
+  }
+}

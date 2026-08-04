@@ -1,0 +1,9 @@
+{
+  "name": "TrocaDex",
+  "short_name": "TrocaDex",
+  "display": "standalone",
+  "start_url": "/",
+  "theme_color": "#aa3bff",
+  "background_color": "#ffffff",
+  "icons": []
+}
