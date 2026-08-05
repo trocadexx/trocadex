@@ -412,6 +412,34 @@ button {
   cursor: not-allowed;
 }
 
+/* ---------- Carteira ---------- */
+.wallet-card {
+  border: 2px solid var(--accent);
+  background: var(--accent-bg);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.wallet-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-h);
+  margin: 0 0 4px;
+}
+
+.wallet-count {
+  font-size: 13px;
+  color: var(--text);
+  margin: 0;
+}
+
+.wallet-disclaimer {
+  font-size: 11px;
+  color: var(--text);
+  margin: 8px 0 0;
+}
+
 /* ---------- Top 10 mais raras ---------- */
 .top10-section {
   margin-bottom: 24px;

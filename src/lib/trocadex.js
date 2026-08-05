@@ -176,10 +176,12 @@ export async function addUserCard(card, realPhotoFile) {
   const path = `${user.id}/${crypto.randomUUID()}.jpg`;
   const { error: upErr } = await supabase.storage.from("real-photos").upload(path, realPhotoFile, { upsert: false });
   if (upErr) throw upErr;
+  const priceResult = await getReferencePriceBRL(card.usd_price);
   const { data, error } = await supabase.from("user_cards").insert({
     owner_id: user.id, catalog_card_id: card.id, name: card.name, set_name: card.set_name,
     number: card.number, rarity: card.rarity, card_type: card.card_type,
     official_image_url: card.image_url, real_photo_path: path, verified: true,
+    ref_value_brl: priceResult.available ? priceResult.brl : null,
   }).select().single();
   if (error) throw error;
   return data;
@@ -206,6 +208,13 @@ export async function deleteUserCard(card) {
   }
   const { error } = await supabase.from("user_cards").delete().eq("id", card.id);
   if (error) throw error;
+}
+export async function getWalletTotal() {
+  const user = await currentUser();
+  const { data, error } = await supabase.from("user_cards").select("ref_value_brl").eq("owner_id", user.id);
+  if (error) throw error;
+  const total = (data || []).reduce((sum, c) => sum + (Number(c.ref_value_brl) || 0), 0);
+  return { total, count: (data || []).length };
 }
 
 // ---------- EXPLORAR + TOP 10 ----------

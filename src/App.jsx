@@ -17,6 +17,7 @@ import {
   setHidden,
   getReferencePriceBRL,
   getCardPriceByCatalogId,
+  getWalletTotal,
 } from "./lib/trocadex";
 import "./App.css";
 
@@ -638,11 +639,30 @@ function Top10Section() {
   );
 }
 
+function WalletCard({ loading, error, total, count }) {
+  if (loading) return <p className="loading-msg">Carregando carteira...</p>;
+  if (error) return <p className="error-msg">{error}</p>;
+
+  return (
+    <div className="wallet-card">
+      <p className="wallet-title">💼 Minha carteira: ≈ R$ {total.toFixed(2).replace(".", ",")}</p>
+      <p className="wallet-count">
+        {count} {count === 1 ? "carta" : "cartas"}
+      </p>
+      <p className="wallet-disclaimer">valor estimado de referência, não é preço de venda</p>
+    </div>
+  );
+}
+
 function CatalogSection() {
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [walletTotal, setWalletTotal] = useState(0);
+  const [walletCount, setWalletCount] = useState(0);
+  const [walletLoading, setWalletLoading] = useState(true);
+  const [walletError, setWalletError] = useState("");
 
   async function loadCards() {
     setError("");
@@ -657,8 +677,23 @@ function CatalogSection() {
     }
   }
 
+  async function loadWallet() {
+    setWalletError("");
+    setWalletLoading(true);
+    try {
+      const { total, count } = await getWalletTotal();
+      setWalletTotal(total);
+      setWalletCount(count);
+    } catch (err) {
+      setWalletError(err.message || "Não foi possível carregar sua carteira.");
+    } finally {
+      setWalletLoading(false);
+    }
+  }
+
   useEffect(() => {
     loadCards();
+    loadWallet();
   }, []);
 
   async function handleToggleTrade(cardId, value) {
@@ -669,14 +704,20 @@ function CatalogSection() {
   async function handleDeleteCard(card) {
     await deleteUserCard(card);
     setCards((prev) => prev.filter((c) => c.id !== card.id));
+    setWalletTotal((prev) => prev - (Number(card.ref_value_brl) || 0));
+    setWalletCount((prev) => Math.max(0, prev - 1));
   }
 
   function handleAdded(newCard) {
     setCards((prev) => [newCard, ...prev]);
+    setWalletTotal((prev) => prev + (Number(newCard.ref_value_brl) || 0));
+    setWalletCount((prev) => prev + 1);
   }
 
   return (
     <div className="catalog-section">
+      <WalletCard loading={walletLoading} error={walletError} total={walletTotal} count={walletCount} />
+
       <Top10Section />
 
       <div className="catalog-header">
