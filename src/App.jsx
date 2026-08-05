@@ -18,6 +18,7 @@ import {
   getReferencePriceBRL,
   getCardPriceByCatalogId,
   getWalletTotal,
+  getDollarRate,
 } from "./lib/trocadex";
 import "./App.css";
 
@@ -697,14 +698,22 @@ function CatalogSection() {
   async function handleDeleteCard(card) {
     await deleteUserCard(card);
     setCards((prev) => prev.filter((c) => c.id !== card.id));
-    setWalletTotal((prev) => prev - (Number(card.ref_value_brl) || 0));
     setWalletCount((prev) => Math.max(0, prev - 1));
+    const usd = Number(card.ref_value_usd);
+    if (Number.isFinite(usd)) {
+      const rate = await getDollarRate();
+      setWalletTotal((prev) => prev - usd * rate);
+    }
   }
 
-  function handleAdded(newCard) {
+  async function handleAdded(newCard) {
     setCards((prev) => [newCard, ...prev]);
-    setWalletTotal((prev) => prev + (Number(newCard.ref_value_brl) || 0));
     setWalletCount((prev) => prev + 1);
+    const usd = Number(newCard.ref_value_usd);
+    if (Number.isFinite(usd)) {
+      const rate = await getDollarRate();
+      setWalletTotal((prev) => prev + usd * rate);
+    }
   }
 
   return (
@@ -720,7 +729,7 @@ function CatalogSection() {
         </button>
       </div>
 
-      <p className="price-source-note">Valores: fonte TCGdex, convertidos para R$.</p>
+      <p className="price-source-note">Valores da TCGdex, convertidos do dólar americano.</p>
 
       {loading && <p className="loading-msg">Carregando...</p>}
       {error && <p className="error-msg">{error}</p>}

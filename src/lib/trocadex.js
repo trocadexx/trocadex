@@ -118,9 +118,10 @@ export async function getCatalogCard(id) {
   };
 }
 
-// ---------- PREÇO DE REFERÊNCIA (preço USD do TCGdex + câmbio) ----------
+// ---------- PREÇO DE REFERÊNCIA (preço USD do TCGdex + câmbio em cache compartilhado) ----------
 const FX_URL = "https://economia.awesomeapi.com.br/last/USD-BRL";
 const FX_FALLBACK_RATE = 5.5;
+const FX_CACHE_MS = 2 * 24 * 60 * 60 * 1000; // 2 dias
 
 // O preço em USD do TCGdex vem aninhado por variante (holofoil, normal, etc.),
 // então pegamos o marketPrice da primeira variante que tiver um valor numérico.
@@ -136,25 +137,54 @@ function extractUsdMarketPrice(pricing) {
   return null;
 }
 
-// Cache em memória da cotação USD->BRL, buscada uma única vez por sessão.
-let fxRatePromise = null;
-function getUsdToBrlRate() {
-  if (!fxRatePromise) {
-    fxRatePromise = fetch(FX_URL)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        const bid = parseFloat(data?.USDBRL?.bid);
-        return Number.isFinite(bid) && bid > 0 ? { rate: bid, isFallback: false } : { rate: FX_FALLBACK_RATE, isFallback: true };
-      })
-      .catch(() => ({ rate: FX_FALLBACK_RATE, isFallback: true }));
+async function fetchFreshDollarRate() {
+  try {
+    const res = await fetch(FX_URL);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const bid = parseFloat(data?.USDBRL?.bid);
+    return Number.isFinite(bid) && bid > 0 ? bid : null;
+  } catch {
+    return null;
   }
-  return fxRatePromise;
+}
+
+// Cotação USD->BRL cacheada na tabela "app_config", compartilhada entre todos os usuários.
+// Só busca uma cotação nova na AwesomeAPI se o cache tiver mais de 2 dias.
+let dollarRatePromise = null;
+export function getDollarRate() {
+  if (!dollarRatePromise) {
+    dollarRatePromise = (async () => {
+      const { data: config, error } = await supabase.from("app_config").select("*").eq("id", true).single();
+
+      if (error || !config) {
+        return (await fetchFreshDollarRate()) ?? FX_FALLBACK_RATE;
+      }
+
+      const updatedAt = new Date(config.updated_at).getTime();
+      const isStale = !Number.isFinite(updatedAt) || Date.now() - updatedAt >= FX_CACHE_MS;
+      const savedRate = typeof config.usd_brl_rate === "number" ? config.usd_brl_rate : FX_FALLBACK_RATE;
+
+      if (!isStale) return savedRate;
+
+      const fresh = await fetchFreshDollarRate();
+      if (fresh === null) return savedRate;
+
+      // RLS só permite este UPDATE se a linha realmente estiver "vencida" (>2 dias),
+      // então mesmo com vários usuários batendo aqui ao mesmo tempo não há spam de escrita.
+      await supabase.from("app_config").update({ usd_brl_rate: fresh, updated_at: new Date().toISOString() }).eq("id", true);
+      return fresh;
+    })().finally(() => {
+      dollarRatePromise = null;
+    });
+  }
+  return dollarRatePromise;
 }
 
 export async function getReferencePriceBRL(usdPrice) {
   if (typeof usdPrice !== "number" || !Number.isFinite(usdPrice)) return { available: false };
-  const { rate, isFallback } = await getUsdToBrlRate();
-  return { available: true, brl: usdPrice * rate, isApprox: isFallback };
+  const rate = await getDollarRate();
+  return { available: true, brl: usdPrice * rate };
 }
 
 export async function getCardPriceByCatalogId(catalogCardId) {
@@ -181,6 +211,7 @@ export async function addUserCard(card, realPhotoFile) {
     owner_id: user.id, catalog_card_id: card.id, name: card.name, set_name: card.set_name,
     number: card.number, rarity: card.rarity, card_type: card.card_type,
     official_image_url: card.image_url, real_photo_path: path, verified: true,
+    ref_value_usd: typeof card.usd_price === "number" ? card.usd_price : null,
     ref_value_brl: priceResult.available ? priceResult.brl : null,
   }).select().single();
   if (error) throw error;
@@ -211,9 +242,13 @@ export async function deleteUserCard(card) {
 }
 export async function getWalletTotal() {
   const user = await currentUser();
-  const { data, error } = await supabase.from("user_cards").select("ref_value_brl").eq("owner_id", user.id);
+  const { data, error } = await supabase.from("user_cards").select("ref_value_usd").eq("owner_id", user.id);
   if (error) throw error;
-  const total = (data || []).reduce((sum, c) => sum + (Number(c.ref_value_brl) || 0), 0);
+  const rate = await getDollarRate();
+  const total = (data || []).reduce((sum, c) => {
+    const usd = Number(c.ref_value_usd);
+    return sum + (Number.isFinite(usd) ? usd * rate : 0);
+  }, 0);
   return { total, count: (data || []).length };
 }
 
