@@ -147,6 +147,14 @@ export async function realPhotoUrl(path) {
   if (error) throw error;
   return data.signedUrl;
 }
+export async function deleteUserCard(card) {
+  if (card.real_photo_path) {
+    const { error: storageErr } = await supabase.storage.from("real-photos").remove([card.real_photo_path]);
+    if (storageErr) throw storageErr;
+  }
+  const { error } = await supabase.from("user_cards").delete().eq("id", card.id);
+  if (error) throw error;
+}
 
 // ---------- EXPLORAR + TOP 10 ----------
 export async function getTop10() {

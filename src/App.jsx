@@ -10,7 +10,9 @@ import {
   searchCatalog,
   getCatalogCard,
   addUserCard,
+  deleteUserCard,
   getExplore,
+  getTop10,
   getMyProfile,
   setHidden,
 } from "./lib/trocadex";
@@ -205,8 +207,9 @@ function AuthScreen({ onLoggedIn }) {
   );
 }
 
-function CatalogCard({ card, onToggleTrade }) {
+function CatalogCard({ card, onToggleTrade, onDelete }) {
   const [toggling, setToggling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
 
   async function handleToggle() {
@@ -218,6 +221,18 @@ function CatalogCard({ card, onToggleTrade }) {
       setError(err.message || "Não foi possível atualizar.");
     } finally {
       setToggling(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!window.confirm("Tem certeza que deseja excluir esta carta?")) return;
+    setError("");
+    setDeleting(true);
+    try {
+      await onDelete(card);
+    } catch (err) {
+      setError(err.message || "Não foi possível excluir a carta.");
+      setDeleting(false);
     }
   }
 
@@ -240,14 +255,19 @@ function CatalogCard({ card, onToggleTrade }) {
         </p>
         <p className="card-meta">{card.rarity}</p>
       </div>
-      <button
-        type="button"
-        className={card.for_trade ? "trade-btn active" : "trade-btn"}
-        onClick={handleToggle}
-        disabled={toggling}
-      >
-        {toggling ? "..." : card.for_trade ? "✓ à troca" : "Marcar à troca"}
-      </button>
+      <div className="card-actions">
+        <button
+          type="button"
+          className={card.for_trade ? "trade-btn active" : "trade-btn"}
+          onClick={handleToggle}
+          disabled={toggling || deleting}
+        >
+          {toggling ? "..." : card.for_trade ? "✓ à troca" : "Marcar à troca"}
+        </button>
+        <button type="button" className="delete-btn" onClick={handleDelete} disabled={deleting} aria-label="Excluir carta">
+          {deleting ? "..." : "🗑️"}
+        </button>
+      </div>
       {error && <p className="error-msg small">{error}</p>}
     </div>
   );
@@ -437,6 +457,66 @@ function AddCardModal({ onClose, onAdded }) {
   );
 }
 
+function Top10Section() {
+  const [top10, setTop10] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    getTop10()
+      .then((data) => {
+        if (active) setTop10(data || []);
+      })
+      .catch((err) => {
+        if (active) setError(err.message || "Não foi possível carregar o Top 10.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return (
+    <div className="top10-section">
+      <h3 className="top10-title">🏆 Top 10 mais raras da comunidade</h3>
+
+      {loading && <p className="loading-msg">Carregando...</p>}
+      {error && <p className="error-msg">{error}</p>}
+
+      {!loading && !error && top10.length === 0 && (
+        <p className="empty-msg">Ainda não há cartas raras cadastradas. Seja o primeiro a aparecer aqui!</p>
+      )}
+
+      {!loading && !error && top10.length > 0 && (
+        <div className="top10-scroll">
+          {top10.map((card, i) => (
+            <div key={card.id ?? i} className={i === 0 ? "top10-card top10-first" : "top10-card"}>
+              <span className="top10-rank">{i === 0 ? "👑 #1" : `#${i + 1}`}</span>
+              <div className="top10-image-wrap">
+                {card.official_image_url ? (
+                  <img src={card.official_image_url} alt={card.name} className="card-image" />
+                ) : (
+                  <div className="card-placeholder small" style={{ background: placeholderColor(card.name) }}>
+                    {card.name?.[0]?.toUpperCase() || "?"}
+                  </div>
+                )}
+              </div>
+              <p className="top10-name">{card.name}</p>
+              <p className="top10-meta">{card.rarity}</p>
+              <p className="top10-owner">@{card.owner_handle}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="top10-cta">Cadastre cartas raras e apareça aqui! Não precisa estar à troca.</p>
+    </div>
+  );
+}
+
 function CatalogSection() {
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -465,12 +545,19 @@ function CatalogSection() {
     setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, for_trade: value } : c)));
   }
 
+  async function handleDeleteCard(card) {
+    await deleteUserCard(card);
+    setCards((prev) => prev.filter((c) => c.id !== card.id));
+  }
+
   function handleAdded(newCard) {
     setCards((prev) => [newCard, ...prev]);
   }
 
   return (
     <div className="catalog-section">
+      <Top10Section />
+
       <div className="catalog-header">
         <h2>Catálogo</h2>
         <button type="button" onClick={() => setShowAdd(true)}>
@@ -487,7 +574,7 @@ function CatalogSection() {
 
       <div className="catalog-grid">
         {cards.map((card) => (
-          <CatalogCard key={card.id} card={card} onToggleTrade={handleToggleTrade} />
+          <CatalogCard key={card.id} card={card} onToggleTrade={handleToggleTrade} onDelete={handleDeleteCard} />
         ))}
       </div>
 

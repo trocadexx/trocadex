@@ -349,6 +349,127 @@ button {
   cursor: not-allowed;
 }
 
+.card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.card-actions .trade-btn {
+  flex: 1;
+  width: auto;
+}
+
+.delete-btn {
+  cursor: pointer;
+  flex-shrink: 0;
+  background: none;
+  color: #dc2626;
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.delete-btn:hover {
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---------- Top 10 mais raras ---------- */
+.top10-section {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.top10-title {
+  margin: 0 0 12px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.top10-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+}
+
+.top10-card {
+  flex: 0 0 120px;
+  width: 120px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px;
+  background: var(--bg);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-sizing: border-box;
+}
+
+.top10-card.top10-first {
+  border: 2px solid var(--accent);
+  background: var(--accent-bg);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.top10-rank {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.top10-image-wrap {
+  aspect-ratio: 3 / 4;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--code-bg);
+}
+
+.top10-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-h);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.top10-meta {
+  font-size: 11px;
+  color: var(--text);
+  margin: 0;
+}
+
+.top10-owner {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.top10-cta {
+  font-size: 12px;
+  color: var(--text);
+  font-style: italic;
+  margin: 10px 0 0;
+}
+
 .error-msg.small {
   font-size: 12px;
   padding: 6px 10px;
