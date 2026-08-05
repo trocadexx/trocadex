@@ -349,21 +349,17 @@ button {
   cursor: not-allowed;
 }
 
-.price-msg {
-  margin-top: 4px;
-}
-
 .price-value {
   font-size: 13px;
   font-weight: 700;
   color: var(--accent);
-  margin: 0;
+  margin: 4px 0 0;
 }
 
-.price-disclaimer {
-  font-size: 10px;
+.price-source-note {
+  font-size: 11px;
   color: var(--text);
-  margin: 2px 0 0;
+  margin: 0 0 16px;
 }
 
 .price-unavailable {

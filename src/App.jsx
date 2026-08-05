@@ -236,14 +236,7 @@ function PriceBadge({ catalogCardId, usdPrice }) {
 
   if (!state.available) return <p className="price-unavailable">valor indisponível</p>;
 
-  return (
-    <div className="price-msg">
-      <p className="price-value">valor de referência ≈ R$ {state.brl.toFixed(2).replace(".", ",")}</p>
-      <p className="price-disclaimer">
-        estimativa, não é preço oficial de venda{state.isApprox ? " · câmbio aproximado" : ""}
-      </p>
-    </div>
-  );
+  return <p className="price-value">≈ R$ {state.brl.toFixed(2).replace(".", ",")}</p>;
 }
 
 function CatalogCard({ card, onToggleTrade, onDelete }) {
@@ -726,6 +719,8 @@ function CatalogSection() {
           + Adicionar carta
         </button>
       </div>
+
+      <p className="price-source-note">Valores: fonte TCGdex, convertidos para R$.</p>
 
       {loading && <p className="loading-msg">Carregando...</p>}
       {error && <p className="error-msg">{error}</p>}
