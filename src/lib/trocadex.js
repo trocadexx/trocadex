@@ -51,6 +51,19 @@ export async function setHidden(hidden) {
   const { error } = await supabase.from("profiles").update({ is_hidden: hidden }).eq("id", user.id);
   if (error) throw error;
 }
+export async function getMyProfile() {
+  const user = await currentUser();
+  if (!user) throw new Error("Faça login primeiro.");
+  const { data: profile, error: pErr } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+  if (pErr) throw pErr;
+  let guardian = null;
+  if (profile.is_minor) {
+    const { data: g, error: gErr } = await supabase.from("guardians").select("*").eq("profile_id", user.id).single();
+    if (gErr) throw gErr;
+    guardian = g;
+  }
+  return { ...profile, guardian };
+}
 
 // ---------- CATÁLOGO (TCGdex) ----------
 const TCGDEX = "https://api.tcgdex.net/v2/en/cards";

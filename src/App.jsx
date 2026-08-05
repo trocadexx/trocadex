@@ -11,6 +11,8 @@ import {
   getCatalogCard,
   addUserCard,
   getExplore,
+  getMyProfile,
+  setHidden,
 } from "./lib/trocadex";
 import "./App.css";
 
@@ -606,6 +608,110 @@ function ExploreSection() {
   );
 }
 
+function ProfileSection() {
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [savingHidden, setSavingHidden] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
+  const [toggleError, setToggleError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    setError("");
+    setLoading(true);
+    getMyProfile()
+      .then((data) => {
+        if (active) setProfile(data);
+      })
+      .catch((err) => {
+        if (active) setError(err.message || "Não foi possível carregar seu perfil.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleToggleHidden() {
+    if (!profile) return;
+    const next = !profile.is_hidden;
+    setToggleError("");
+    setSavedFlash(false);
+    setSavingHidden(true);
+    try {
+      await setHidden(next);
+      setProfile((p) => ({ ...p, is_hidden: next }));
+      setSavedFlash(true);
+      setTimeout(() => setSavedFlash(false), 1800);
+    } catch (err) {
+      setToggleError(err.message || "Não foi possível atualizar sua visibilidade.");
+    } finally {
+      setSavingHidden(false);
+    }
+  }
+
+  if (loading) return <p className="loading-msg">Carregando...</p>;
+  if (error) return <p className="error-msg">{error}</p>;
+  if (!profile) return null;
+
+  return (
+    <div className="profile-section">
+      <h2>Perfil</h2>
+
+      <div className="profile-handle-card">
+        <p className="profile-handle">@{profile.handle}</p>
+        <p className="profile-privacy-note">
+          Seu perfil público mostra apenas seu @ e sua região aproximada. Seu nome e endereço nunca aparecem
+          para outros usuários.
+        </p>
+      </div>
+
+      {profile.is_minor && (
+        <div className="profile-guardian-box">
+          <p className="guardian-title">Responsável</p>
+          {profile.guardian ? (
+            <>
+              <p className="card-meta">Nome: {profile.guardian.name}</p>
+              <p className="card-meta">Telefone: {profile.guardian.phone}</p>
+            </>
+          ) : (
+            <p className="card-meta">Dados do responsável não encontrados.</p>
+          )}
+          <p className="guardian-note">Os dados do responsável são usados nas trocas e envios.</p>
+        </div>
+      )}
+
+      <div className={profile.is_hidden ? "hide-toggle-card hidden-on" : "hide-toggle-card"}>
+        <div className="hide-toggle-row">
+          <div>
+            <p className="hide-toggle-label">OCULTAR TUDO</p>
+            <p className="hide-toggle-desc">
+              {profile.is_hidden
+                ? "🙈 Você está invisível. Suas cartas não aparecem no Explorar para outros usuários."
+                : "Você está visível para outros treinadores."}
+            </p>
+          </div>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={!!profile.is_hidden}
+              onChange={handleToggleHidden}
+              disabled={savingHidden}
+            />
+            <span className="slider" />
+          </label>
+        </div>
+        {savingHidden && <p className="saving-msg">Salvando...</p>}
+        {savedFlash && !savingHidden && <p className="saved-msg">✓ Salvo</p>}
+        {toggleError && <p className="error-msg">{toggleError}</p>}
+      </div>
+    </div>
+  );
+}
+
 function MainScreen({ onLoggedOut }) {
   const [section, setSection] = useState("catalogo");
 
@@ -660,12 +766,7 @@ function MainScreen({ onLoggedOut }) {
         {section === "catalogo" && <CatalogSection />}
         {section === "explorar" && <ExploreSection />}
         {section === "avaliar" && <p>🔧 Avaliação de cartas em construção. Em breve!</p>}
-        {section === "perfil" && (
-          <div>
-            <h2>Perfil</h2>
-            <p>em breve</p>
-          </div>
-        )}
+        {section === "perfil" && <ProfileSection />}
       </div>
     </div>
   );

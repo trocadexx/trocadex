@@ -420,6 +420,159 @@ button {
   margin-top: 2px;
 }
 
+/* ---------- Perfil ---------- */
+.profile-section h2 {
+  margin-bottom: 16px;
+}
+
+.profile-handle-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 16px;
+  background: var(--bg);
+}
+
+.profile-handle {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0 0 8px;
+}
+
+.profile-privacy-note {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.profile-guardian-box {
+  border: 2px solid var(--accent);
+  background: var(--accent-bg);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.guardian-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--accent);
+  margin: 0 0 4px;
+}
+
+.guardian-note {
+  font-size: 12px;
+  color: var(--text);
+  margin: 8px 0 0;
+}
+
+.hide-toggle-card {
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  background: var(--bg);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.hide-toggle-card.hidden-on {
+  border-color: #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.hide-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hide-toggle-label {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--text-h);
+  margin: 0 0 4px;
+}
+
+.hide-toggle-desc {
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+}
+
+.hide-toggle-card.hidden-on .hide-toggle-desc {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 56px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch .slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: var(--border);
+  transition: 0.2s;
+  border-radius: 999px;
+}
+
+.switch .slider::before {
+  content: "";
+  position: absolute;
+  height: 24px;
+  width: 24px;
+  left: 4px;
+  bottom: 4px;
+  background: #fff;
+  transition: 0.2s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.switch input:checked + .slider {
+  background: #dc2626;
+}
+
+.switch input:checked + .slider::before {
+  transform: translateX(24px);
+}
+
+.switch input:disabled + .slider {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.saving-msg {
+  font-size: 13px;
+  color: var(--text);
+  margin: 10px 0 0;
+}
+
+.saved-msg {
+  font-size: 13px;
+  color: #16a34a;
+  font-weight: 600;
+  margin: 10px 0 0;
+}
+
 /* ---------- Modal (adicionar carta) ---------- */
 .modal-overlay {
   position: fixed;
