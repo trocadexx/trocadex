@@ -411,14 +411,6 @@ button {
   margin-bottom: 20px;
 }
 
-.wallet-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
 .wallet-title {
   font-size: 20px;
   font-weight: 800;
@@ -430,29 +422,6 @@ button {
   font-size: 13px;
   color: var(--text);
   margin: 0;
-}
-
-.wallet-recalc-btn {
-  cursor: pointer;
-  flex-shrink: 0;
-  background: var(--bg);
-  color: var(--accent);
-  border: 1px solid var(--accent-border);
-  border-radius: 999px;
-  padding: 8px 14px;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-  transition: background 0.2s;
-}
-
-.wallet-recalc-btn:hover {
-  background: var(--accent-bg);
-}
-
-.wallet-recalc-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .wallet-disclaimer {

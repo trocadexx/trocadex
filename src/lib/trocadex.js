@@ -213,6 +213,7 @@ export async function addUserCard(card, realPhotoFile) {
     official_image_url: card.image_url, real_photo_path: path, verified: true,
     ref_value_usd: typeof card.usd_price === "number" ? card.usd_price : null,
     ref_value_brl: priceResult.available ? priceResult.brl : null,
+    price_updated_at: new Date().toISOString(),
   }).select().single();
   if (error) throw error;
   return data;
@@ -251,34 +252,47 @@ export async function getWalletTotal() {
   }, 0);
   return { total, count: (data || []).length };
 }
-// Preenche ref_value_usd/ref_value_brl de cartas antigas cadastradas antes dessas colunas existirem.
-export async function recalcAllCardValues() {
+const PRICE_CACHE_MS = 2 * 24 * 60 * 60 * 1000; // 2 dias
+
+// Reatualiza em segundo plano o preço de cartas cujo price_updated_at é nulo ou tem mais de 2 dias.
+// Roda de forma automática (sem botão): chame após carregar o Catálogo. `onCardUpdated(cardId, patch)`
+// é chamado a cada carta atualizada com sucesso, pra quem estiver ouvindo já atualizar seu estado local.
+export async function refreshStaleCardPrices(onCardUpdated) {
   const user = await currentUser();
   const { data: cards, error } = await supabase
     .from("user_cards")
-    .select("id, catalog_card_id")
-    .eq("owner_id", user.id)
-    .is("ref_value_usd", null);
+    .select("id, catalog_card_id, price_updated_at")
+    .eq("owner_id", user.id);
   if (error) throw error;
 
-  let updated = 0;
-  for (const card of cards || []) {
-    if (!card.catalog_card_id) continue;
+  const now = Date.now();
+  const stale = (cards || []).filter((c) => {
+    if (!c.catalog_card_id) return false;
+    if (!c.price_updated_at) return true;
+    const t = new Date(c.price_updated_at).getTime();
+    return !Number.isFinite(t) || now - t >= PRICE_CACHE_MS;
+  });
+
+  for (const card of stale) {
     try {
       const detail = await getCatalogCard(card.catalog_card_id);
       const usd = typeof detail.usd_price === "number" ? detail.usd_price : null;
       const priceResult = await getReferencePriceBRL(usd);
-      const { error: updateErr } = await supabase
-        .from("user_cards")
-        .update({ ref_value_usd: usd, ref_value_brl: priceResult.available ? priceResult.brl : null })
-        .eq("id", card.id);
-      if (!updateErr) updated += 1;
+      const patch = {
+        ref_value_usd: usd,
+        ref_value_brl: priceResult.available ? priceResult.brl : null,
+        price_updated_at: new Date().toISOString(),
+      };
+      const { error: updateErr } = await supabase.from("user_cards").update(patch).eq("id", card.id);
+      if (!updateErr && typeof onCardUpdated === "function") {
+        onCardUpdated(card.id, patch);
+      }
     } catch {
       // Carta sem preço no TCGdex ou falha pontual de rede: pula e segue pras próximas.
     }
   }
 
-  return { updated, total: (cards || []).length };
+  return { checked: stale.length };
 }
 
 // ---------- EXPLORAR + TOP 10 ----------

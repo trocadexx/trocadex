@@ -19,7 +19,7 @@ import {
   getCardPriceByCatalogId,
   getWalletTotal,
   getDollarRate,
-  recalcAllCardValues,
+  refreshStaleCardPrices,
 } from "./lib/trocadex";
 import "./App.css";
 
@@ -634,23 +634,16 @@ function Top10Section() {
   );
 }
 
-function WalletCard({ loading, error, total, count, onRecalc, recalculating }) {
+function WalletCard({ loading, error, total, count }) {
   if (loading) return <p className="loading-msg">Carregando carteira...</p>;
   if (error) return <p className="error-msg">{error}</p>;
 
   return (
     <div className="wallet-card">
-      <div className="wallet-header">
-        <div>
-          <p className="wallet-title">💼 Minha carteira: ≈ R$ {total.toFixed(2).replace(".", ",")}</p>
-          <p className="wallet-count">
-            {count} {count === 1 ? "carta" : "cartas"}
-          </p>
-        </div>
-        <button type="button" className="wallet-recalc-btn" onClick={onRecalc} disabled={recalculating}>
-          {recalculating ? "Atualizando..." : "🔄 Atualizar valores"}
-        </button>
-      </div>
+      <p className="wallet-title">💼 Minha carteira: ≈ R$ {total.toFixed(2).replace(".", ",")}</p>
+      <p className="wallet-count">
+        {count} {count === 1 ? "carta" : "cartas"}
+      </p>
       <p className="wallet-disclaimer">Valores de referência da TCGdex, convertidos do dólar americano.</p>
     </div>
   );
@@ -665,7 +658,6 @@ function CatalogSection() {
   const [walletCount, setWalletCount] = useState(0);
   const [walletLoading, setWalletLoading] = useState(true);
   const [walletError, setWalletError] = useState("");
-  const [recalculating, setRecalculating] = useState(false);
 
   async function loadCards() {
     setError("");
@@ -699,18 +691,24 @@ function CatalogSection() {
     loadWallet();
   }, []);
 
-  async function handleRecalc() {
-    setRecalculating(true);
-    try {
-      await recalcAllCardValues();
-      await loadWallet();
-      await loadCards();
-    } catch (err) {
-      setWalletError(err.message || "Não foi possível atualizar os valores.");
-    } finally {
-      setRecalculating(false);
-    }
-  }
+  // Reatualiza em segundo plano o preço de cartas com mais de 2 dias sem checar, sem travar a tela.
+  // Ao terminar, a carteira é recarregada automaticamente — sem precisar de nenhum botão.
+  useEffect(() => {
+    let active = true;
+    refreshStaleCardPrices((cardId, patch) => {
+      if (!active) return;
+      setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, ...patch } : c)));
+    })
+      .then(() => {
+        if (active) loadWallet();
+      })
+      .catch(() => {
+        // Falha silenciosa: não bloqueia a tela, a carteira segue mostrando os valores que já tinha.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleToggleTrade(cardId, value) {
     await toggleTrade(cardId, value);
@@ -740,14 +738,7 @@ function CatalogSection() {
 
   return (
     <div className="catalog-section">
-      <WalletCard
-        loading={walletLoading}
-        error={walletError}
-        total={walletTotal}
-        count={walletCount}
-        onRecalc={handleRecalc}
-        recalculating={recalculating}
-      />
+      <WalletCard loading={walletLoading} error={walletError} total={walletTotal} count={walletCount} />
 
       <Top10Section />
 
