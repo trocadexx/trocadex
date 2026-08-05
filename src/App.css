@@ -349,6 +349,36 @@ button {
   cursor: not-allowed;
 }
 
+.price-msg {
+  margin-top: 4px;
+}
+
+.price-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0;
+}
+
+.price-disclaimer {
+  font-size: 10px;
+  color: var(--text);
+  margin: 2px 0 0;
+}
+
+.price-unavailable {
+  font-size: 12px;
+  color: var(--text);
+  font-style: italic;
+  margin: 4px 0 0;
+}
+
+.price-loading {
+  font-size: 12px;
+  color: var(--text);
+  margin: 4px 0 0;
+}
+
 .card-actions {
   display: flex;
   gap: 8px;

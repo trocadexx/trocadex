@@ -114,7 +114,59 @@ export async function getCatalogCard(id) {
     number: `${c.localId || "?"}/${c.set?.cardCount?.official || "?"}`,
     rarity: c.rarity || "—", card_type: (c.types && c.types[0]) || "Incolor",
     image_url: imgUrl(c.image),
+    usd_price: extractUsdMarketPrice(c.pricing),
   };
+}
+
+// ---------- PREÇO DE REFERÊNCIA (preço USD do TCGdex + câmbio) ----------
+const FX_URL = "https://economia.awesomeapi.com.br/last/USD-BRL";
+const FX_FALLBACK_RATE = 5.5;
+
+// O preço em USD do TCGdex vem aninhado por variante (holofoil, normal, etc.),
+// então pegamos o marketPrice da primeira variante que tiver um valor numérico.
+function extractUsdMarketPrice(pricing) {
+  const tp = pricing?.tcgplayer;
+  if (!tp || typeof tp !== "object") return null;
+  for (const [key, val] of Object.entries(tp)) {
+    if (key === "unit" || key === "updated" || key === "url") continue;
+    if (val && typeof val === "object" && typeof val.marketPrice === "number") {
+      return val.marketPrice;
+    }
+  }
+  return null;
+}
+
+// Cache em memória da cotação USD->BRL, buscada uma única vez por sessão.
+let fxRatePromise = null;
+function getUsdToBrlRate() {
+  if (!fxRatePromise) {
+    fxRatePromise = fetch(FX_URL)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const bid = parseFloat(data?.USDBRL?.bid);
+        return Number.isFinite(bid) && bid > 0 ? { rate: bid, isFallback: false } : { rate: FX_FALLBACK_RATE, isFallback: true };
+      })
+      .catch(() => ({ rate: FX_FALLBACK_RATE, isFallback: true }));
+  }
+  return fxRatePromise;
+}
+
+export async function getReferencePriceBRL(usdPrice) {
+  if (typeof usdPrice !== "number" || !Number.isFinite(usdPrice)) return { available: false };
+  const { rate, isFallback } = await getUsdToBrlRate();
+  return { available: true, brl: usdPrice * rate, isApprox: isFallback };
+}
+
+export async function getCardPriceByCatalogId(catalogCardId) {
+  if (!catalogCardId) return { available: false };
+  try {
+    const res = await fetch(`${TCGDEX}/${catalogCardId}`);
+    if (!res.ok) return { available: false };
+    const c = await res.json();
+    return getReferencePriceBRL(extractUsdMarketPrice(c.pricing));
+  } catch {
+    return { available: false };
+  }
 }
 
 // ---------- CARTAS DO USUÁRIO ----------

@@ -15,6 +15,8 @@ import {
   getTop10,
   getMyProfile,
   setHidden,
+  getReferencePriceBRL,
+  getCardPriceByCatalogId,
 } from "./lib/trocadex";
 import "./App.css";
 
@@ -207,6 +209,42 @@ function AuthScreen({ onLoggedIn }) {
   );
 }
 
+function PriceBadge({ catalogCardId, usdPrice }) {
+  const [state, setState] = useState({ loading: true, available: false, brl: null, isApprox: false });
+
+  useEffect(() => {
+    let active = true;
+    setState({ loading: true, available: false, brl: null, isApprox: false });
+
+    const fetchPrice = usdPrice !== undefined ? getReferencePriceBRL(usdPrice) : getCardPriceByCatalogId(catalogCardId);
+
+    fetchPrice
+      .then((result) => {
+        if (active) setState({ loading: false, ...result });
+      })
+      .catch(() => {
+        if (active) setState({ loading: false, available: false });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [catalogCardId, usdPrice]);
+
+  if (state.loading) return <p className="price-loading">Calculando valor...</p>;
+
+  if (!state.available) return <p className="price-unavailable">valor indisponível</p>;
+
+  return (
+    <div className="price-msg">
+      <p className="price-value">valor de referência ≈ R$ {state.brl.toFixed(2).replace(".", ",")}</p>
+      <p className="price-disclaimer">
+        estimativa, não é preço oficial de venda{state.isApprox ? " · câmbio aproximado" : ""}
+      </p>
+    </div>
+  );
+}
+
 function CatalogCard({ card, onToggleTrade, onDelete }) {
   const [toggling, setToggling] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -254,6 +292,7 @@ function CatalogCard({ card, onToggleTrade, onDelete }) {
           {card.set_name} · {card.number}
         </p>
         <p className="card-meta">{card.rarity}</p>
+        <PriceBadge catalogCardId={card.catalog_card_id} />
       </div>
       <div className="card-actions">
         <button
@@ -425,6 +464,7 @@ function AddCardModal({ onClose, onAdded }) {
                   {selectedCard.set_name} · {selectedCard.number}
                 </p>
                 <p className="card-meta">{selectedCard.rarity}</p>
+                <PriceBadge usdPrice={selectedCard.usd_price} />
               </div>
             </div>
 
