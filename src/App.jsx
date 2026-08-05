@@ -19,6 +19,7 @@ import {
   getCardPriceByCatalogId,
   getWalletTotal,
   getDollarRate,
+  recalcAllCardValues,
 } from "./lib/trocadex";
 import "./App.css";
 
@@ -633,16 +634,23 @@ function Top10Section() {
   );
 }
 
-function WalletCard({ loading, error, total, count }) {
+function WalletCard({ loading, error, total, count, onRecalc, recalculating }) {
   if (loading) return <p className="loading-msg">Carregando carteira...</p>;
   if (error) return <p className="error-msg">{error}</p>;
 
   return (
     <div className="wallet-card">
-      <p className="wallet-title">💼 Minha carteira: ≈ R$ {total.toFixed(2).replace(".", ",")}</p>
-      <p className="wallet-count">
-        {count} {count === 1 ? "carta" : "cartas"}
-      </p>
+      <div className="wallet-header">
+        <div>
+          <p className="wallet-title">💼 Minha carteira: ≈ R$ {total.toFixed(2).replace(".", ",")}</p>
+          <p className="wallet-count">
+            {count} {count === 1 ? "carta" : "cartas"}
+          </p>
+        </div>
+        <button type="button" className="wallet-recalc-btn" onClick={onRecalc} disabled={recalculating}>
+          {recalculating ? "Atualizando..." : "🔄 Atualizar valores"}
+        </button>
+      </div>
       <p className="wallet-disclaimer">Valores de referência da TCGdex, convertidos do dólar americano.</p>
     </div>
   );
@@ -657,6 +665,7 @@ function CatalogSection() {
   const [walletCount, setWalletCount] = useState(0);
   const [walletLoading, setWalletLoading] = useState(true);
   const [walletError, setWalletError] = useState("");
+  const [recalculating, setRecalculating] = useState(false);
 
   async function loadCards() {
     setError("");
@@ -690,6 +699,19 @@ function CatalogSection() {
     loadWallet();
   }, []);
 
+  async function handleRecalc() {
+    setRecalculating(true);
+    try {
+      await recalcAllCardValues();
+      await loadWallet();
+      await loadCards();
+    } catch (err) {
+      setWalletError(err.message || "Não foi possível atualizar os valores.");
+    } finally {
+      setRecalculating(false);
+    }
+  }
+
   async function handleToggleTrade(cardId, value) {
     await toggleTrade(cardId, value);
     setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, for_trade: value } : c)));
@@ -718,7 +740,14 @@ function CatalogSection() {
 
   return (
     <div className="catalog-section">
-      <WalletCard loading={walletLoading} error={walletError} total={walletTotal} count={walletCount} />
+      <WalletCard
+        loading={walletLoading}
+        error={walletError}
+        total={walletTotal}
+        count={walletCount}
+        onRecalc={handleRecalc}
+        recalculating={recalculating}
+      />
 
       <Top10Section />
 

@@ -251,6 +251,35 @@ export async function getWalletTotal() {
   }, 0);
   return { total, count: (data || []).length };
 }
+// Preenche ref_value_usd/ref_value_brl de cartas antigas cadastradas antes dessas colunas existirem.
+export async function recalcAllCardValues() {
+  const user = await currentUser();
+  const { data: cards, error } = await supabase
+    .from("user_cards")
+    .select("id, catalog_card_id")
+    .eq("owner_id", user.id)
+    .is("ref_value_usd", null);
+  if (error) throw error;
+
+  let updated = 0;
+  for (const card of cards || []) {
+    if (!card.catalog_card_id) continue;
+    try {
+      const detail = await getCatalogCard(card.catalog_card_id);
+      const usd = typeof detail.usd_price === "number" ? detail.usd_price : null;
+      const priceResult = await getReferencePriceBRL(usd);
+      const { error: updateErr } = await supabase
+        .from("user_cards")
+        .update({ ref_value_usd: usd, ref_value_brl: priceResult.available ? priceResult.brl : null })
+        .eq("id", card.id);
+      if (!updateErr) updated += 1;
+    } catch {
+      // Carta sem preço no TCGdex ou falha pontual de rede: pula e segue pras próximas.
+    }
+  }
+
+  return { updated, total: (cards || []).length };
+}
 
 // ---------- EXPLORAR + TOP 10 ----------
 export async function getTop10() {
