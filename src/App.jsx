@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   signUp,
   signIn,
@@ -497,6 +497,107 @@ function AddCardModal({ onClose, onAdded }) {
   );
 }
 
+function Top10Carousel({ cards }) {
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const SPEED = 0.5; // px por frame (~30px/s a 60fps) — lento e suave
+    const RESUME_DELAY = 1500;
+
+    let rafId;
+    let paused = false;
+    let resumeTimer = null;
+    const pauseReasons = new Set();
+
+    function pauseFor(reason) {
+      pauseReasons.add(reason);
+      paused = true;
+      if (resumeTimer) {
+        clearTimeout(resumeTimer);
+        resumeTimer = null;
+      }
+    }
+
+    function releaseFor(reason) {
+      pauseReasons.delete(reason);
+      if (pauseReasons.size === 0) {
+        if (resumeTimer) clearTimeout(resumeTimer);
+        resumeTimer = setTimeout(() => {
+          paused = false;
+        }, RESUME_DELAY);
+      }
+    }
+
+    function step() {
+      if (!paused) {
+        const half = el.scrollWidth / 2;
+        el.scrollLeft += SPEED;
+        while (half > 0 && el.scrollLeft >= half) {
+          el.scrollLeft -= half;
+        }
+      }
+      rafId = requestAnimationFrame(step);
+    }
+    rafId = requestAnimationFrame(step);
+
+    const onMouseEnter = () => pauseFor("hover");
+    const onMouseLeave = () => releaseFor("hover");
+    const onPointerDown = () => pauseFor("drag");
+    const onPointerUp = () => releaseFor("drag");
+
+    el.addEventListener("mouseenter", onMouseEnter);
+    el.addEventListener("mouseleave", onMouseLeave);
+    el.addEventListener("touchstart", onPointerDown, { passive: true });
+    el.addEventListener("touchend", onPointerUp, { passive: true });
+    el.addEventListener("pointerdown", onPointerDown);
+    el.addEventListener("pointerup", onPointerUp);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      if (resumeTimer) clearTimeout(resumeTimer);
+      el.removeEventListener("mouseenter", onMouseEnter);
+      el.removeEventListener("mouseleave", onMouseLeave);
+      el.removeEventListener("touchstart", onPointerDown);
+      el.removeEventListener("touchend", onPointerUp);
+      el.removeEventListener("pointerdown", onPointerDown);
+      el.removeEventListener("pointerup", onPointerUp);
+    };
+  }, []);
+
+  // Duplica a lista para dar o efeito de loop contínuo sem "pulo" ao voltar ao início.
+  const loopCards = [...cards, ...cards];
+
+  return (
+    <div className="top10-scroll" ref={scrollRef}>
+      {loopCards.map((card, i) => {
+        const rank = i % cards.length;
+        return (
+          <div key={`${card.id ?? rank}-${i}`} className={rank === 0 ? "top10-card top10-first" : "top10-card"}>
+            <span className="top10-rank">{rank === 0 ? "👑 #1" : `#${rank + 1}`}</span>
+            <div className="top10-image-wrap">
+              {card.official_image_url ? (
+                <img src={card.official_image_url} alt={card.name} className="card-image" />
+              ) : (
+                <div className="card-placeholder small" style={{ background: placeholderColor(card.name) }}>
+                  {card.name?.[0]?.toUpperCase() || "?"}
+                </div>
+              )}
+            </div>
+            <p className="top10-name">{card.name}</p>
+            <p className="top10-meta">{card.rarity}</p>
+            <p className="top10-owner">@{card.owner_handle}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Top10Section() {
   const [top10, setTop10] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -530,27 +631,7 @@ function Top10Section() {
         <p className="empty-msg">Ainda não há cartas raras cadastradas. Seja o primeiro a aparecer aqui!</p>
       )}
 
-      {!loading && !error && top10.length > 0 && (
-        <div className="top10-scroll">
-          {top10.map((card, i) => (
-            <div key={card.id ?? i} className={i === 0 ? "top10-card top10-first" : "top10-card"}>
-              <span className="top10-rank">{i === 0 ? "👑 #1" : `#${i + 1}`}</span>
-              <div className="top10-image-wrap">
-                {card.official_image_url ? (
-                  <img src={card.official_image_url} alt={card.name} className="card-image" />
-                ) : (
-                  <div className="card-placeholder small" style={{ background: placeholderColor(card.name) }}>
-                    {card.name?.[0]?.toUpperCase() || "?"}
-                  </div>
-                )}
-              </div>
-              <p className="top10-name">{card.name}</p>
-              <p className="top10-meta">{card.rarity}</p>
-              <p className="top10-owner">@{card.owner_handle}</p>
-            </div>
-          ))}
-        </div>
-      )}
+      {!loading && !error && top10.length > 0 && <Top10Carousel cards={top10} />}
 
       <p className="top10-cta">Cadastre cartas raras e apareça aqui! Não precisa estar à troca.</p>
     </div>
