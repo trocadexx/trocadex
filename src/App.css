@@ -992,6 +992,328 @@ button {
   color: var(--text-h) !important;
 }
 
+/* ---------- Status de aprovação da carta ---------- */
+.status-pending {
+  font-size: 12px;
+  font-weight: 600;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.12);
+  border-radius: 999px;
+  padding: 3px 10px;
+  margin: 4px 0 0;
+  display: inline-block;
+}
+
+.status-rejected-box {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.status-rejected {
+  font-size: 12px;
+  font-weight: 600;
+  color: #dc2626;
+  margin: 0;
+}
+
+.status-rejected-reason {
+  font-size: 11px;
+  color: var(--text);
+  margin: 0;
+}
+
+.hidden-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.resubmit-btn {
+  cursor: pointer;
+  align-self: flex-start;
+  background: var(--code-bg);
+  color: var(--text-h);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.resubmit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---------- Regras da foto + botão de câmera ---------- */
+.photo-rules {
+  background: var(--code-bg);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.photo-rules-title {
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 6px;
+}
+
+.photo-rules ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.camera-btn {
+  cursor: pointer;
+  margin-top: 6px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 11px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  width: 100%;
+}
+
+.camera-btn:hover {
+  opacity: 0.9;
+}
+
+/* ---------- Painel Admin ---------- */
+.admin-section h2 {
+  margin-bottom: 16px;
+}
+
+.admin-tabs {
+  margin-bottom: 20px;
+}
+
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 14px;
+}
+
+.admin-stat-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 14px;
+  text-align: center;
+  background: var(--bg);
+}
+
+.admin-stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--accent);
+  margin: 0 0 4px;
+}
+
+.admin-stat-label {
+  font-size: 13px;
+  color: var(--text);
+  margin: 0;
+}
+
+.admin-section-subtitle {
+  font-weight: 600;
+  color: var(--text-h);
+  font-size: 14px;
+  margin: 16px 0 10px;
+}
+
+.admin-users-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-user-row {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font: inherit;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.admin-user-row:hover {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.admin-user-handle {
+  font-weight: 600;
+  color: var(--text-h);
+  font-size: 14px;
+  margin: 0 0 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-user-meta-right {
+  text-align: right;
+}
+
+.badge-minor {
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.admin-user-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 10px;
+}
+
+.admin-mini-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px;
+  text-align: center;
+}
+
+.admin-mini-card img,
+.admin-mini-card .card-placeholder {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.admin-mini-card-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 6px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-mini-card-status {
+  font-size: 10px;
+  color: var(--text);
+  margin: 2px 0 0;
+}
+
+.admin-reports-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-report-row {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.admin-report-date {
+  font-size: 11px;
+  color: var(--text);
+  margin: 4px 0 0;
+}
+
+.admin-approvals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-approval-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-approval-title {
+  font-weight: 600;
+  color: var(--text-h);
+  font-size: 15px;
+  margin: 0;
+}
+
+.admin-approval-images {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.admin-approval-image-label {
+  font-size: 12px;
+  color: var(--text);
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.admin-approval-image {
+  width: 100%;
+  border-radius: 10px;
+  object-fit: contain;
+  background: var(--code-bg);
+  max-height: 220px;
+}
+
+.admin-approval-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.approve-btn,
+.reject-btn {
+  cursor: pointer;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.approve-btn {
+  background: #16a34a;
+  color: #fff;
+}
+
+.reject-btn {
+  background: #fff;
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.4);
+}
+
+.approve-btn:disabled,
+.reject-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* ---------- Responsivo ---------- */
 @media (max-width: 600px) {
   .auth-screen,
@@ -1026,5 +1348,18 @@ button {
     flex-direction: column;
     align-items: center;
     text-align: center;
+  }
+
+  .admin-approval-images {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-user-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-user-meta-right {
+    text-align: left;
   }
 }

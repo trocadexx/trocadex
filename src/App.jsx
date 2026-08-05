@@ -20,6 +20,16 @@ import {
   getWalletTotal,
   getDollarRate,
   refreshStaleCardPrices,
+  resubmitCardPhoto,
+  isCurrentUserAdmin,
+  getAdminOverview,
+  getAdminUsers,
+  getAdminUserDetail,
+  getAdminReports,
+  getPendingCards,
+  approveCard,
+  rejectCard,
+  realPhotoUrl,
 } from "./lib/trocadex";
 import "./App.css";
 
@@ -241,10 +251,12 @@ function PriceBadge({ catalogCardId, usdPrice }) {
   return <p className="price-value">≈ R$ {state.brl.toFixed(2).replace(".", ",")}</p>;
 }
 
-function CatalogCard({ card, onToggleTrade, onDelete }) {
+function CatalogCard({ card, onToggleTrade, onDelete, onResubmit }) {
   const [toggling, setToggling] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [resubmitting, setResubmitting] = useState(false);
   const [error, setError] = useState("");
+  const fileInputRef = useRef(null);
 
   async function handleToggle() {
     setError("");
@@ -270,6 +282,21 @@ function CatalogCard({ card, onToggleTrade, onDelete }) {
     }
   }
 
+  async function handleResubmitFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setError("");
+    setResubmitting(true);
+    try {
+      await onResubmit(card, file);
+    } catch (err) {
+      setError(err.message || "Não foi possível reenviar a foto.");
+    } finally {
+      setResubmitting(false);
+    }
+  }
+
   return (
     <div className="card-tile">
       <div className="card-image-wrap">
@@ -289,6 +316,29 @@ function CatalogCard({ card, onToggleTrade, onDelete }) {
         </p>
         <p className="card-meta">{card.rarity}</p>
         <PriceBadge catalogCardId={card.catalog_card_id} />
+        {card.status === "pendente" && <p className="status-pending">⏳ Aguardando aprovação</p>}
+        {card.status === "recusada" && (
+          <div className="status-rejected-box">
+            <p className="status-rejected">❌ Foto recusada — envie uma nova foto</p>
+            {card.reject_reason && <p className="status-rejected-reason">Motivo: {card.reject_reason}</p>}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleResubmitFile}
+              className="hidden-file-input"
+            />
+            <button
+              type="button"
+              className="resubmit-btn"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={resubmitting}
+            >
+              {resubmitting ? "Enviando..." : "📷 Reenviar foto"}
+            </button>
+          </div>
+        )}
       </div>
       <div className="card-actions">
         <button
@@ -321,6 +371,7 @@ function AddCardModal({ onClose, onAdded }) {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const photoInputRef = useRef(null);
 
   async function handleSearch(e) {
     e.preventDefault();
@@ -469,9 +520,31 @@ function AddCardModal({ onClose, onAdded }) {
               <strong>não fica visível publicamente</strong>.
             </p>
 
+            <div className="photo-rules">
+              <p className="photo-rules-title">Regras da foto (a carta passa por aprovação):</p>
+              <ul>
+                <li>Carta inteira, sem cortar as bordas</li>
+                <li>Boa iluminação, sem sombras fortes</li>
+                <li>Fundo neutro</li>
+                <li>Sem reflexos ou brilho sobre a carta</li>
+                <li>Foto de frente, sem ângulo</li>
+              </ul>
+            </div>
+
             <label className="photo-upload">
               Foto da sua carta real (obrigatória)
-              <input type="file" accept="image/*" capture="environment" onChange={handlePhotoChange} required />
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handlePhotoChange}
+                className="hidden-file-input"
+                required
+              />
+              <button type="button" className="camera-btn" onClick={() => photoInputRef.current?.click()}>
+                📷 Tirar foto da carta
+              </button>
             </label>
 
             {photoPreview && <img src={photoPreview} alt="Prévia da foto real" className="photo-preview" />}
@@ -718,22 +791,25 @@ function CatalogSection() {
   async function handleDeleteCard(card) {
     await deleteUserCard(card);
     setCards((prev) => prev.filter((c) => c.id !== card.id));
-    setWalletCount((prev) => Math.max(0, prev - 1));
-    const usd = Number(card.ref_value_usd);
-    if (Number.isFinite(usd)) {
-      const rate = await getDollarRate();
-      setWalletTotal((prev) => prev - usd * rate);
+    // Só descontava da carteira se a carta já estava aprovada (é o que entra na soma).
+    if (card.status === "aprovada" || card.status == null) {
+      setWalletCount((prev) => Math.max(0, prev - 1));
+      const usd = Number(card.ref_value_usd);
+      if (Number.isFinite(usd)) {
+        const rate = await getDollarRate();
+        setWalletTotal((prev) => prev - usd * rate);
+      }
     }
   }
 
-  async function handleAdded(newCard) {
+  function handleAdded(newCard) {
     setCards((prev) => [newCard, ...prev]);
-    setWalletCount((prev) => prev + 1);
-    const usd = Number(newCard.ref_value_usd);
-    if (Number.isFinite(usd)) {
-      const rate = await getDollarRate();
-      setWalletTotal((prev) => prev + usd * rate);
-    }
+    // Cartas novas entram como "pendente" e só contam na carteira depois de aprovadas.
+  }
+
+  async function handleResubmit(card, file) {
+    const updated = await resubmitCardPhoto(card, file);
+    setCards((prev) => prev.map((c) => (c.id === card.id ? { ...c, ...updated } : c)));
   }
 
   return (
@@ -758,7 +834,13 @@ function CatalogSection() {
 
       <div className="catalog-grid">
         {cards.map((card) => (
-          <CatalogCard key={card.id} card={card} onToggleTrade={handleToggleTrade} onDelete={handleDeleteCard} />
+          <CatalogCard
+            key={card.id}
+            card={card}
+            onToggleTrade={handleToggleTrade}
+            onDelete={handleDeleteCard}
+            onResubmit={handleResubmit}
+          />
         ))}
       </div>
 
@@ -983,8 +1065,450 @@ function ProfileSection() {
   );
 }
 
+function downloadUsersCsv(users) {
+  const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const header = "handle,cidade,telefone";
+  const rows = users.map((u) => [esc(u.handle), esc(u.city_approx), esc(u.phone)].join(","));
+  const csv = [header, ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "usuarios_trocadex.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function AdminOverview() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    getAdminOverview()
+      .then((d) => {
+        if (active) setData(d);
+      })
+      .catch((err) => {
+        if (active) setError(err.message || "Não foi possível carregar a visão geral.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (loading) return <p className="loading-msg">Carregando...</p>;
+  if (error) return <p className="error-msg">{error}</p>;
+
+  return (
+    <div className="admin-stats-grid">
+      <div className="admin-stat-card">
+        <p className="admin-stat-value">{data.totalUsers}</p>
+        <p className="admin-stat-label">Usuários</p>
+      </div>
+      <div className="admin-stat-card">
+        <p className="admin-stat-value">{data.totalCards}</p>
+        <p className="admin-stat-label">Cartas cadastradas</p>
+      </div>
+      <div className="admin-stat-card">
+        <p className="admin-stat-value">{data.cardsForTrade}</p>
+        <p className="admin-stat-label">Cartas à troca</p>
+      </div>
+      <div className="admin-stat-card">
+        <p className="admin-stat-value">{data.minors}</p>
+        <p className="admin-stat-label">Usuários menores</p>
+      </div>
+    </div>
+  );
+}
+
+function AdminUserDetailModal({ profileId, onClose }) {
+  const [detail, setDetail] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    getAdminUserDetail(profileId)
+      .then((d) => {
+        if (active) setDetail(d);
+      })
+      .catch((err) => {
+        if (active) setError(err.message || "Não foi possível carregar os detalhes.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [profileId]);
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Detalhes do usuário</h3>
+          <button type="button" className="modal-close" onClick={onClose} aria-label="Fechar">
+            ×
+          </button>
+        </div>
+        <div className="modal-body">
+          {loading && <p className="loading-msg">Carregando...</p>}
+          {error && <p className="error-msg">{error}</p>}
+          {detail && (
+            <>
+              <p className="profile-handle">@{detail.profile.handle}</p>
+              <p className="card-meta">{detail.profile.display_name}</p>
+              <p className="card-meta">{detail.profile.city_approx || "—"}</p>
+
+              {detail.profile.is_minor && (
+                <div className="profile-guardian-box">
+                  <p className="guardian-title">Responsável</p>
+                  {detail.profile.guardian ? (
+                    <>
+                      <p className="card-meta">Nome: {detail.profile.guardian.name}</p>
+                      <p className="card-meta">Telefone: {detail.profile.guardian.phone}</p>
+                    </>
+                  ) : (
+                    <p className="card-meta">Dados do responsável não encontrados.</p>
+                  )}
+                </div>
+              )}
+
+              <p className="admin-section-subtitle">Cartas ({detail.cards.length})</p>
+              {detail.cards.length === 0 ? (
+                <p className="empty-msg">Nenhuma carta cadastrada.</p>
+              ) : (
+                <div className="admin-user-cards-grid">
+                  {detail.cards.map((c) => (
+                    <div key={c.id} className="admin-mini-card">
+                      {c.official_image_url ? (
+                        <img src={c.official_image_url} alt={c.name} />
+                      ) : (
+                        <div className="card-placeholder small" style={{ background: placeholderColor(c.name) }}>
+                          {c.name?.[0]?.toUpperCase() || "?"}
+                        </div>
+                      )}
+                      <p className="admin-mini-card-name">{c.name}</p>
+                      <p className="admin-mini-card-status">{c.status || "aprovada"}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminUsers() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState(null);
+
+  async function load(term) {
+    setError("");
+    setLoading(true);
+    try {
+      const data = await getAdminUsers(term);
+      setUsers(data);
+    } catch (err) {
+      setError(err.message || "Não foi possível carregar os usuários.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load("");
+  }, []);
+
+  function handleSearchSubmit(e) {
+    e.preventDefault();
+    load(search);
+  }
+
+  return (
+    <div>
+      <form className="explore-filters" onSubmit={handleSearchSubmit}>
+        <input
+          type="text"
+          placeholder="Buscar por nome ou @handle..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <button type="submit" disabled={loading}>
+          Buscar
+        </button>
+        <button
+          type="button"
+          className="secondary-btn"
+          onClick={() => downloadUsersCsv(users)}
+          disabled={users.length === 0}
+        >
+          ⬇️ Exportar CSV
+        </button>
+      </form>
+
+      {loading && <p className="loading-msg">Carregando...</p>}
+      {error && <p className="error-msg">{error}</p>}
+
+      {!loading && !error && (
+        <p className="results-count">
+          {users.length} {users.length === 1 ? "usuário" : "usuários"}
+        </p>
+      )}
+
+      <div className="admin-users-list">
+        {users.map((u) => (
+          <button type="button" key={u.id} className="admin-user-row" onClick={() => setSelectedUserId(u.id)}>
+            <div>
+              <p className="admin-user-handle">
+                @{u.handle} {u.is_minor && <span className="badge-minor">menor</span>}
+              </p>
+              <p className="card-meta">{u.display_name}</p>
+            </div>
+            <div className="admin-user-meta-right">
+              <p className="card-meta">{u.city_approx || "—"}</p>
+              <p className="card-meta">{u.phone || "—"}</p>
+              <p className="card-meta">{u.created_at ? new Date(u.created_at).toLocaleDateString("pt-BR") : "—"}</p>
+            </div>
+          </button>
+        ))}
+        {!loading && !error && users.length === 0 && <p className="empty-msg">Nenhum usuário encontrado.</p>}
+      </div>
+
+      {selectedUserId && <AdminUserDetailModal profileId={selectedUserId} onClose={() => setSelectedUserId(null)} />}
+    </div>
+  );
+}
+
+function AdminReports() {
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    getAdminReports()
+      .then((data) => {
+        if (active) setReports(data);
+      })
+      .catch((err) => {
+        if (active) setError(err.message || "Não foi possível carregar as denúncias.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (loading) return <p className="loading-msg">Carregando...</p>;
+  if (error) return <p className="error-msg">{error}</p>;
+  if (reports.length === 0) return <p className="empty-msg">Nenhuma denúncia registrada.</p>;
+
+  return (
+    <div className="admin-reports-list">
+      {reports.map((r) => (
+        <div key={r.id} className="admin-report-row">
+          <p className="card-meta">
+            <strong>@{r.reporter?.handle || "—"}</strong> denunciou <strong>@{r.reported?.handle || "—"}</strong>
+          </p>
+          <p className="card-meta">Motivo: {r.reason || "—"}</p>
+          <p className="admin-report-date">{r.created_at ? new Date(r.created_at).toLocaleString("pt-BR") : "—"}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AdminApprovalCard({ card, onDecided }) {
+  const [realUrl, setRealUrl] = useState(null);
+  const [loadingUrl, setLoadingUrl] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    if (!card.real_photo_path) {
+      setLoadingUrl(false);
+      return;
+    }
+    realPhotoUrl(card.real_photo_path)
+      .then((url) => {
+        if (active) setRealUrl(url);
+      })
+      .catch(() => {
+        if (active) setError("Não foi possível carregar a foto real.");
+      })
+      .finally(() => {
+        if (active) setLoadingUrl(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [card.real_photo_path]);
+
+  async function handleApprove() {
+    setBusy(true);
+    setError("");
+    try {
+      await approveCard(card.id);
+      onDecided(card.id);
+    } catch (err) {
+      setError(err.message || "Não foi possível aprovar.");
+      setBusy(false);
+    }
+  }
+
+  async function handleReject() {
+    const reason = window.prompt("Motivo da recusa (opcional):") || null;
+    setBusy(true);
+    setError("");
+    try {
+      await rejectCard(card.id, reason);
+      onDecided(card.id);
+    } catch (err) {
+      setError(err.message || "Não foi possível recusar.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="admin-approval-card">
+      <p className="admin-approval-title">
+        {card.name} <span className="card-meta">· @{card.owner?.handle || "—"}</span>
+      </p>
+      <div className="admin-approval-images">
+        <div>
+          <p className="admin-approval-image-label">Foto oficial</p>
+          {card.official_image_url ? (
+            <img src={card.official_image_url} alt="Oficial" className="admin-approval-image" />
+          ) : (
+            <div className="card-placeholder" style={{ background: placeholderColor(card.name) }}>
+              {card.name?.[0]?.toUpperCase() || "?"}
+            </div>
+          )}
+        </div>
+        <div>
+          <p className="admin-approval-image-label">Foto real</p>
+          {loadingUrl ? (
+            <p className="loading-msg">Carregando...</p>
+          ) : realUrl ? (
+            <img src={realUrl} alt="Foto real enviada pelo usuário" className="admin-approval-image" />
+          ) : (
+            <p className="empty-msg">Sem foto.</p>
+          )}
+        </div>
+      </div>
+      {error && <p className="error-msg small">{error}</p>}
+      <div className="admin-approval-actions">
+        <button type="button" className="reject-btn" onClick={handleReject} disabled={busy}>
+          ❌ Recusar
+        </button>
+        <button type="button" className="approve-btn" onClick={handleApprove} disabled={busy}>
+          ✅ Aprovar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AdminApprovals() {
+  const [cards, setCards] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function load() {
+    setError("");
+    setLoading(true);
+    try {
+      const data = await getPendingCards();
+      setCards(data);
+    } catch (err) {
+      setError(err.message || "Não foi possível carregar a fila de aprovação.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  function handleDecided(cardId) {
+    setCards((prev) => prev.filter((c) => c.id !== cardId));
+  }
+
+  if (loading) return <p className="loading-msg">Carregando...</p>;
+  if (error) return <p className="error-msg">{error}</p>;
+  if (cards.length === 0) return <p className="empty-msg">Nenhuma carta aguardando aprovação. 🎉</p>;
+
+  return (
+    <div className="admin-approvals-list">
+      {cards.map((card) => (
+        <AdminApprovalCard key={card.id} card={card} onDecided={handleDecided} />
+      ))}
+    </div>
+  );
+}
+
+function AdminSection() {
+  const [tab, setTab] = useState("overview");
+
+  return (
+    <div className="admin-section">
+      <h2>⚙️ Painel Admin</h2>
+      <div className="nav-buttons admin-tabs">
+        <button type="button" className={tab === "overview" ? "active" : ""} onClick={() => setTab("overview")}>
+          Visão geral
+        </button>
+        <button type="button" className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}>
+          Usuários
+        </button>
+        <button type="button" className={tab === "reports" ? "active" : ""} onClick={() => setTab("reports")}>
+          Denúncias
+        </button>
+        <button type="button" className={tab === "approvals" ? "active" : ""} onClick={() => setTab("approvals")}>
+          Aprovar cartas
+        </button>
+      </div>
+      <div className="admin-tab-content">
+        {tab === "overview" && <AdminOverview />}
+        {tab === "users" && <AdminUsers />}
+        {tab === "reports" && <AdminReports />}
+        {tab === "approvals" && <AdminApprovals />}
+      </div>
+    </div>
+  );
+}
+
 function MainScreen({ onLoggedOut }) {
   const [section, setSection] = useState("catalogo");
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    isCurrentUserAdmin().then((admin) => {
+      if (active) setIsAdmin(admin);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleSignOut() {
     await signOut();
@@ -1031,6 +1555,15 @@ function MainScreen({ onLoggedOut }) {
         >
           Perfil
         </button>
+        {isAdmin && (
+          <button
+            type="button"
+            className={section === "admin" ? "active" : ""}
+            onClick={() => setSection("admin")}
+          >
+            ⚙️ Admin
+          </button>
+        )}
       </nav>
 
       <div className="content-area">
@@ -1038,6 +1571,7 @@ function MainScreen({ onLoggedOut }) {
         {section === "explorar" && <ExploreSection />}
         {section === "avaliar" && <p>🔧 Avaliação de cartas em construção. Em breve!</p>}
         {section === "perfil" && <ProfileSection />}
+        {section === "admin" && isAdmin && <AdminSection />}
       </div>
     </div>
   );

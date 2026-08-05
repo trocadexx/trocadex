@@ -64,6 +64,13 @@ export async function getMyProfile() {
   }
   return { ...profile, guardian };
 }
+export async function isCurrentUserAdmin() {
+  const user = await currentUser();
+  if (!user) return false;
+  const { data, error } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  if (error) return false;
+  return data?.role === "admin";
+}
 
 // ---------- CATÁLOGO (TCGdex) ----------
 const TCGDEX = "https://api.tcgdex.net/v2/pt/cards";
@@ -214,6 +221,7 @@ export async function addUserCard(card, realPhotoFile) {
     ref_value_usd: typeof card.usd_price === "number" ? card.usd_price : null,
     ref_value_brl: priceResult.available ? priceResult.brl : null,
     price_updated_at: new Date().toISOString(),
+    status: "pendente",
   }).select().single();
   if (error) throw error;
   return data;
@@ -241,16 +249,37 @@ export async function deleteUserCard(card) {
   const { error } = await supabase.from("user_cards").delete().eq("id", card.id);
   if (error) throw error;
 }
+// Reenvia a foto real de uma carta recusada — volta o status para "pendente" e limpa o motivo da recusa.
+export async function resubmitCardPhoto(card, realPhotoFile) {
+  const user = await currentUser();
+  if (!realPhotoFile) throw new Error("Selecione uma foto para reenviar.");
+  const path = `${user.id}/${crypto.randomUUID()}.jpg`;
+  const { error: upErr } = await supabase.storage.from("real-photos").upload(path, realPhotoFile, { upsert: false });
+  if (upErr) throw upErr;
+  const { data, error } = await supabase
+    .from("user_cards")
+    .update({ real_photo_path: path, status: "pendente", reject_reason: null })
+    .eq("id", card.id)
+    .select()
+    .single();
+  if (error) throw error;
+  if (card.real_photo_path) {
+    supabase.storage.from("real-photos").remove([card.real_photo_path]);
+  }
+  return data;
+}
+// Cartas sem status definido (cadastradas antes desse recurso existir) contam como já aprovadas.
 export async function getWalletTotal() {
   const user = await currentUser();
-  const { data, error } = await supabase.from("user_cards").select("ref_value_usd").eq("owner_id", user.id);
+  const { data, error } = await supabase.from("user_cards").select("ref_value_usd,status").eq("owner_id", user.id);
   if (error) throw error;
   const rate = await getDollarRate();
-  const total = (data || []).reduce((sum, c) => {
+  const approved = (data || []).filter((c) => c.status === "aprovada" || c.status == null);
+  const total = approved.reduce((sum, c) => {
     const usd = Number(c.ref_value_usd);
     return sum + (Number.isFinite(usd) ? usd * rate : 0);
   }, 0);
-  return { total, count: (data || []).length };
+  return { total, count: approved.length };
 }
 const PRICE_CACHE_MS = 2 * 24 * 60 * 60 * 1000; // 2 dias
 
@@ -308,4 +337,76 @@ export async function getExplore({ q = "", rarity = "" } = {}) {
   const { data, error } = await query.limit(60);
   if (error) throw error;
   return data;
+}
+
+// ---------- ADMIN ----------
+export async function getAdminOverview() {
+  const [usersRes, cardsRes, tradeRes, minorsRes] = await Promise.all([
+    supabase.from("profiles").select("id", { count: "exact", head: true }),
+    supabase.from("user_cards").select("id", { count: "exact", head: true }),
+    supabase.from("user_cards").select("id", { count: "exact", head: true }).eq("for_trade", true),
+    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("is_minor", true),
+  ]);
+  const firstError = usersRes.error || cardsRes.error || tradeRes.error || minorsRes.error;
+  if (firstError) throw firstError;
+  return {
+    totalUsers: usersRes.count ?? 0,
+    totalCards: cardsRes.count ?? 0,
+    cardsForTrade: tradeRes.count ?? 0,
+    minors: minorsRes.count ?? 0,
+  };
+}
+
+export async function getAdminUsers(search = "") {
+  let query = supabase
+    .from("profiles")
+    .select("id,handle,display_name,city_approx,is_minor,created_at,guardians(phone)")
+    .order("created_at", { ascending: false });
+  if (search.trim()) {
+    const term = search.trim();
+    query = query.or(`handle.ilike.%${term}%,display_name.ilike.%${term}%`);
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data || []).map((u) => ({ ...u, phone: u.guardians?.[0]?.phone ?? null }));
+}
+
+export async function getAdminUserDetail(profileId) {
+  const [profileRes, cardsRes] = await Promise.all([
+    supabase.from("profiles").select("*, guardians(*)").eq("id", profileId).single(),
+    supabase.from("user_cards").select("*").eq("owner_id", profileId).order("created_at", { ascending: false }),
+  ]);
+  if (profileRes.error) throw profileRes.error;
+  if (cardsRes.error) throw cardsRes.error;
+  const { guardians, ...profile } = profileRes.data;
+  return { profile: { ...profile, guardian: guardians?.[0] ?? null }, cards: cardsRes.data || [] };
+}
+
+export async function getAdminReports() {
+  const { data, error } = await supabase
+    .from("reports")
+    .select("id,reason,created_at,reporter:reporter_id(handle),reported:reported_id(handle)")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getPendingCards() {
+  const { data, error } = await supabase
+    .from("user_cards")
+    .select("*, owner:owner_id(handle)")
+    .eq("status", "pendente")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function approveCard(cardId) {
+  const { error } = await supabase.from("user_cards").update({ status: "aprovada", reject_reason: null }).eq("id", cardId);
+  if (error) throw error;
+}
+
+export async function rejectCard(cardId, reason) {
+  const { error } = await supabase.from("user_cards").update({ status: "recusada", reject_reason: reason || null }).eq("id", cardId);
+  if (error) throw error;
 }
