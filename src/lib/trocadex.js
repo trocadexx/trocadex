@@ -402,11 +402,25 @@ export async function getPendingCards() {
 }
 
 export async function approveCard(cardId) {
-  const { error } = await supabase.from("user_cards").update({ status: "aprovada", reject_reason: null }).eq("id", cardId);
+  const { data, error } = await supabase
+    .from("user_cards")
+    .update({ status: "aprovada", reject_reason: null })
+    .eq("id", cardId)
+    .select();
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Não foi possível aprovar (0 linhas afetadas — confira a policy de UPDATE do admin em user_cards).");
+  }
 }
 
 export async function rejectCard(cardId, reason) {
-  const { error } = await supabase.from("user_cards").update({ status: "recusada", reject_reason: reason || null }).eq("id", cardId);
+  const { data, error } = await supabase
+    .from("user_cards")
+    .update({ status: "recusada", reject_reason: reason || null })
+    .eq("id", cardId)
+    .select();
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Não foi possível recusar (0 linhas afetadas — confira a policy de UPDATE do admin em user_cards).");
+  }
 }
