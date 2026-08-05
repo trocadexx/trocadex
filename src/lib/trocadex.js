@@ -66,8 +66,8 @@ export async function getMyProfile() {
 }
 
 // ---------- CATÁLOGO (TCGdex) ----------
-const TCGDEX = "https://api.tcgdex.net/v2/en/cards";
-const TCGDEX_SETS = "https://api.tcgdex.net/v2/en/sets";
+const TCGDEX = "https://api.tcgdex.net/v2/pt/cards";
+const TCGDEX_SETS = "https://api.tcgdex.net/v2/pt/sets";
 const imgUrl = (base) => (base ? base + "/high.webp" : null);
 
 // Cache em memória do índice de sets (id -> { name, cardCount }), buscado uma única vez.
