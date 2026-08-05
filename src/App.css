@@ -356,12 +356,6 @@ button {
   margin: 4px 0 0;
 }
 
-.price-source-note {
-  font-size: 11px;
-  color: var(--text);
-  margin: 0 0 16px;
-}
-
 .price-unavailable {
   font-size: 12px;
   color: var(--text);

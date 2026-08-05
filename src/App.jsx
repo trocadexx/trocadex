@@ -643,7 +643,7 @@ function WalletCard({ loading, error, total, count }) {
       <p className="wallet-count">
         {count} {count === 1 ? "carta" : "cartas"}
       </p>
-      <p className="wallet-disclaimer">valor estimado de referência, não é preço de venda</p>
+      <p className="wallet-disclaimer">Valores de referência da TCGdex, convertidos do dólar americano.</p>
     </div>
   );
 }
@@ -728,8 +728,6 @@ function CatalogSection() {
           + Adicionar carta
         </button>
       </div>
-
-      <p className="price-source-note">Valores da TCGdex, convertidos do dólar americano.</p>
 
       {loading && <p className="loading-msg">Carregando...</p>}
       {error && <p className="error-msg">{error}</p>}
