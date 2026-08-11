@@ -293,6 +293,42 @@ button {
   font-size: 20px;
 }
 
+.card-real-photo-wrap {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  width: 54px;
+  text-align: center;
+}
+
+.card-real-photo-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  margin: 0;
+  padding: 1px 0;
+  border-radius: 4px 4px 0 0;
+}
+
+.card-real-photo {
+  width: 54px;
+  height: 54px;
+  object-fit: cover;
+  display: block;
+  border: 2px solid #fff;
+  border-radius: 0 0 6px 6px;
+}
+
+.card-real-photo-wrap .loading-msg.small {
+  font-size: 9px;
+  margin: 0;
+  padding: 2px 4px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border-radius: 0 0 6px 6px;
+}
+
 .badge-real {
   position: absolute;
   top: 6px;

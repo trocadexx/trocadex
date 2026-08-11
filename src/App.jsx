@@ -256,7 +256,31 @@ function CatalogCard({ card, onToggleTrade, onDelete, onResubmit }) {
   const [deleting, setDeleting] = useState(false);
   const [resubmitting, setResubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [realUrl, setRealUrl] = useState(null);
+  const [loadingRealUrl, setLoadingRealUrl] = useState(true);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!card.real_photo_path) {
+      setLoadingRealUrl(false);
+      return;
+    }
+    setLoadingRealUrl(true);
+    realPhotoUrl(card.real_photo_path)
+      .then((url) => {
+        if (active) setRealUrl(url);
+      })
+      .catch(() => {
+        if (active) setRealUrl(null);
+      })
+      .finally(() => {
+        if (active) setLoadingRealUrl(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [card.real_photo_path]);
 
   async function handleToggle() {
     setError("");
@@ -308,6 +332,16 @@ function CatalogCard({ card, onToggleTrade, onDelete, onResubmit }) {
           </div>
         )}
         {card.verified && <span className="badge-real">✓ real</span>}
+        {card.real_photo_path && (
+          <div className="card-real-photo-wrap">
+            <p className="card-real-photo-label">Sua foto</p>
+            {loadingRealUrl ? (
+              <p className="loading-msg small">Carregando...</p>
+            ) : realUrl ? (
+              <img src={realUrl} alt="Foto real enviada por você" className="card-real-photo" />
+            ) : null}
+          </div>
+        )}
       </div>
       <div className="card-info">
         <p className="card-name">{card.name}</p>
